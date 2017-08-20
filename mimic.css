@@ -1,4 +1,7 @@
-body { margin:0 auto; }
+body { 
+  margin:0 auto; 
+  background-color: #F3EDE4;
+}
 
 div.left {
   border-right: 1px solid #ccc;
@@ -25,8 +28,35 @@ div.top {
   min-height: 160px;
   font-size: 10pt;
   word-wrap: break-word;
+  background-color: #969A9E;
 }
 
 #logs {
   font-size: 10pt;
+  background-color: #969A9E;
+}
+
+button {
+  border: 1px solid #0066cc;
+  background-color: #0099cc;
+  color: #ffffff;
+  padding: 5px 10px;
+}
+
+button:hover {
+  border: 1px solid #0099cc;
+  background-color: #00aacc;
+  color: #ffffff;
+  padding: 5px 10px;
+}
+
+button:disabled,
+button[disabled]{
+  border: 1px solid #999999;
+  background-color: #cccccc;
+  color: #666666;
+}
+
+div {
+  padding: 5px 10px;
 }

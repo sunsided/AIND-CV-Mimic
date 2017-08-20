@@ -35,7 +35,7 @@ function toUnicode(c) {
 }
 
 // Update score being displayed
-function setScore(correct, total) {
+function setScore(correct, total='&#8734;') {
   $("#score").html("Score: " + correct + " / " + total);
 }
 
@@ -50,9 +50,13 @@ function log(node_name, msg) {
 function onStart() {
   if (detector && !detector.isRunning) {
     $("#logs").html("");  // clear out previous log
+    setWaitEmoji();
     detector.start();  // start detector
   }
   log('#logs', "Start button pressed");
+
+  // Allow interrupting this ...
+  disableButton('start');
 }
 
 // Stop button
@@ -62,6 +66,15 @@ function onStop() {
     detector.removeEventListener();
     detector.stop();  // stop detector
   }
+
+  // Lock the buttons
+  disableButton('skip');
+  disableButton('stop');
+  disableButton('reset');
+
+  // Allow restart
+  enableButton('start');
+  setThinkEmoji();
 };
 
 // Reset button
@@ -73,8 +86,14 @@ function onReset() {
   $('#results').html("");  // clear out results
   $("#logs").html("");  // clear out previous log
 
-  // TODO(optional): You can restart the game as well
-  // <your code here>
+  // You can restart the game as well
+  resetGame();
+};
+
+// Skip button
+function onSkip() {
+  log('#logs', "Skip button pressed");
+  setNewTarget();
 };
 
 // Add a callback to notify when camera access is allowed
@@ -101,8 +120,8 @@ detector.addEventListener("onInitializeSuccess", function() {
   $("#face_video_canvas").css("display", "block");
   $("#face_video").css("display", "none");
 
-  // TODO(optional): Call a function to initialize the game, if needed
-  // <your code here>
+  // Call a function to initialize the game, if needed
+  resetGame();
 });
 
 // Add a callback to receive the results from processing an image
@@ -117,28 +136,56 @@ detector.addEventListener("onImageResultsSuccess", function(faces, image, timest
   $('#results').html("");
   log('#results', "Timestamp: " + timestamp.toFixed(2));
   log('#results', "Number of faces found: " + faces.length);
+  
   if (faces.length > 0) {
+    var firstFace = faces[0];
+
     // Report desired metrics
-    log('#results', "Appearance: " + JSON.stringify(faces[0].appearance));
-    log('#results', "Emotions: " + JSON.stringify(faces[0].emotions, function(key, val) {
+    log('#results', "Appearance: " + JSON.stringify(firstFace.appearance));
+    log('#results', "Emotions: " + JSON.stringify(firstFace.emotions, function(key, val) {
       return val.toFixed ? Number(val.toFixed(0)) : val;
     }));
-    log('#results', "Expressions: " + JSON.stringify(faces[0].expressions, function(key, val) {
+    log('#results', "Expressions: " + JSON.stringify(firstFace.expressions, function(key, val) {
       return val.toFixed ? Number(val.toFixed(0)) : val;
     }));
-    log('#results', "Emoji: " + faces[0].emojis.dominantEmoji);
+    log('#results', "Emoji: " + firstFace.emojis.dominantEmoji);
+  }
+
+  for (var id in faces) {
+    var face = faces[id];
 
     // Call functions to draw feature points and dominant emoji (for the first face only)
-    drawFeaturePoints(canvas, image, faces[0]);
-    drawEmoji(canvas, image, faces[0]);
-
-    // TODO: Call your function to run the game (define it first!)
-    // <your code here>
+    drawFeaturePoints(canvas, image, face);
+    drawEmoji(canvas, image, face);
   }
+
+  // Unlock the buttons
+  enableButton('stop');
+  enableButton('skip');
+  enableButton('reset');
+
+  // Call your function to run the game
+  mimicMe(faces);
 });
 
 
 // --- Custom functions ---
+
+function setWaitEmoji() {
+  $("#target").html("⏳");
+}
+
+function setThinkEmoji() {
+  $("#target").html("📷🤔");
+}
+
+function enableButton(button) {
+  $('#' + button).removeAttr('disabled');
+}
+
+function disableButton(button) {
+  $('#' + button).attr('disabled', 'disabled');
+}
 
 // Draw the detected facial feature points on the image
 function drawFeaturePoints(canvas, img, face) {
@@ -181,8 +228,7 @@ function drawEmoji(canvas, img, face) {
   ctx.fillText(face.emojis.dominantEmoji, anchor.x, anchor.y);
 }
 
-// TODO: Define any variables and functions to implement the Mimic Me! game mechanics
-
+// Define any variables and functions to implement the Mimic Me! game mechanics
 // NOTE:
 // - Remember to call your update function from the "onImageResultsSuccess" event handler above
 // - You can use setTargetEmoji() and setScore() functions to update the respective elements
@@ -190,9 +236,51 @@ function drawEmoji(canvas, img, face) {
 // - Unicode values for all emojis recognized by Affectiva are provided above in the list 'emojis'
 // - To check for a match, you can convert the dominant emoji to unicode using the toUnicode() function
 
+var currentTarget = 0;
+var currentTargetChar = '';
+var totalScore = 0;
+
 // Optional:
 // - Define an initialization/reset function, and call it from the "onInitializeSuccess" event handler above
 // - Define a game reset function (same as init?), and call it from the onReset() function above
 
 // <your code here>
 
+// Randomly chooses an element from the list.
+function randomChoice(list) {
+  var index = Math.floor(Math.random() * list.length);
+  return list[index];
+}
+
+function setNewTarget() {
+  currentTarget = randomChoice(emojis);
+  currentTargetChar = String.fromCodePoint(currentTarget);
+  setTargetEmoji(currentTarget);
+}
+
+function faceIsCorrect(face) {
+  // Hacky solution: compare unicode characters.
+  return currentTargetChar == face.emojis.dominantEmoji;
+}
+
+// Resets the game.
+function resetGame() {
+  currentTarget = 0;
+  setNewTarget();
+}
+
+// The actual game logic
+function mimicMe(faces) {
+  for (var id in faces) {
+    var face = faces[id];
+
+    // Make this co-operative. 😊
+    if (faceIsCorrect(face)) {
+      totalScore += 1;
+      setScore(totalScore);
+      setNewTarget();
+    }
+  }
+}
+
+setThinkEmoji();
